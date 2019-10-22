@@ -1,0 +1,457 @@
+C51 COMPILER V9.53.0.0   FUNCTIONS                                                         10/22/2019 02:10:31 PAGE 1   
+
+
+C51 COMPILER V9.53.0.0, COMPILATION OF MODULE FUNCTIONS
+OBJECT MODULE PLACED IN .\Output\functions.obj
+COMPILER INVOKED BY: C:\Keil_v5_C51\C51\BIN\C51.EXE Code\src\functions.c OPTIMIZE(0,SPEED) BROWSE INCDIR(Common;Include;
+                    -.\Code\header) DEFINE(FOSC_10000) DEBUG OBJECTEXTEND PRINT(.\Output\LST\functions.lst) TABS(2) OBJECT(.\Output\functions
+                    -.obj)
+
+line level    source
+
+   1          #include "N76E003.h"
+   2          #include "Common.h"
+   3          #include "SFR_Macro.h"
+   4          #include "Function_define.h"
+   5          ///////////////////////////////
+   6          
+   7          #include "functions.h"
+   8          #define CLOCK                 10000
+   9          
+  10          #define LOW_BAT_SHORT         120-50
+  11          #define LOW_BAT_LONG          300-50
+  12          #define BLINK_FAST            110-70
+  13          #define BLINK_SLOW            400-50
+  14          
+  15          #define TARGET_CURRENT          40
+  16          #define LOW_BAT_TARGET_CURRENT      15
+  17          
+  18          #define PWM_DUTY_REGISTER_L   PWM1L
+  19          #define PWM_OUTPUT_ENABLE     set_PIO01
+  20          #define PWM_OUTPUT_DISABLE    clr_PIO01
+  21          
+  22          #define LED_DISABLE           clr_P11
+  23          #define LED_ENABLE            set_P11
+  24          #define POWER_ENABLE          set_P10
+  25          #define POWER_DISABLE         clr_P10
+  26          
+  27          /////////////////////////////////
+  28          //battery voltage
+  29          /////////////////////////////////
+  30          
+  31          float get_battery_voltage()
+  32          {
+  33   1        static UINT16 Bandgap_Voltage = 0;
+  34   1        UINT16 bgvalue;
+  35   1        float VDD_Voltage;
+  36   1        
+  37   1        if (Bandgap_Voltage == 0)
+  38   1          Bandgap_Voltage = READ_BANDGAP(); 
+  39   1        
+  40   1        Enable_ADC_BandGap; 
+  41   1        ADC_Bypass(); 
+  42   1        clr_ADCF; 
+  43   1        set_ADCS; 
+  44   1        while(ADCF == 0);
+  45   1        bgvalue = (ADCRH<<4) + ADCRL;
+  46   1        Disable_ADC;
+  47   1        VDD_Voltage = (4095.0/bgvalue)*Bandgap_Voltage;
+  48   1        return VDD_Voltage;
+  49   1      }
+  50          
+  51          UINT16 READ_BANDGAP() 
+  52          { 
+  53   1        UINT8 BandgapLow, BandgapMark, BandgapHigh;
+C51 COMPILER V9.53.0.0   FUNCTIONS                                                         10/22/2019 02:10:31 PAGE 2   
+
+  54   1        UINT16 Bandgap_Value, Bandgap_Voltage, Bandgap_Voltage_Temp;
+  55   1        
+  56   1        set_IAPEN;
+  57   1        IAPCN = READ_UID;
+  58   1        IAPAL = 0x0d;
+  59   1        IAPAH = 0x00;
+  60   1        set_IAPGO;
+  61   1        BandgapLow = IAPFD;
+  62   1        BandgapMark = BandgapLow&0xF0;
+  63   1          
+  64   1        if (BandgapMark==0x80)
+  65   1        {
+  66   2            BandgapLow = BandgapLow&0x0F;
+  67   2            IAPAL = 0x0C;
+  68   2            IAPAH = 0x00;
+  69   2            set_IAPGO;
+  70   2            BandgapHigh = IAPFD;
+  71   2            Bandgap_Value = (BandgapHigh<<4)+BandgapLow;
+  72   2            Bandgap_Voltage_Temp = Bandgap_Value*3/4;
+  73   2            Bandgap_Voltage = Bandgap_Voltage_Temp - 33;      //the actually banggap voltage value is similar this val
+             -ue.
+  74   2        }
+  75   1        if (BandgapMark==0x00)
+  76   1        {
+  77   2            BandgapLow = BandgapLow&0x0F;
+  78   2            IAPAL = 0x0C;
+  79   2            IAPAH = 0x00;
+  80   2            set_IAPGO;
+  81   2            BandgapHigh = IAPFD;
+  82   2            Bandgap_Value = (BandgapHigh<<4)+BandgapLow;
+  83   2            Bandgap_Voltage= Bandgap_Value*3/4;
+  84   2        }
+  85   1        if (BandgapMark==0x90)
+  86   1        {
+  87   2            IAPAL = 0x0E;
+  88   2            IAPAH = 0x00;
+  89   2            set_IAPGO;
+  90   2            BandgapHigh = IAPFD;
+  91   2            IAPAL = 0x0F;
+  92   2            IAPAH = 0x00;
+  93   2            set_IAPGO;
+  94   2            BandgapLow = IAPFD;
+  95   2            BandgapLow = BandgapLow&0x0F;
+  96   2            Bandgap_Value = (BandgapHigh<<4)+BandgapLow;
+  97   2            Bandgap_Voltage= Bandgap_Value*3/4;
+  98   2        }
+  99   1        clr_IAPEN;
+ 100   1        //set_LIRC();
+ 101   1        return Bandgap_Voltage;
+ 102   1      }
+ 103          
+ 104          void ADC_Bypass (void) // The first three times convert should be bypass 
+ 105          { 
+ 106   1        UINT8 ozc; 
+ 107   1        for (ozc=0; ozc < 3; ozc++) 
+ 108   1        { 
+ 109   2          clr_ADCF; 
+ 110   2          set_ADCS; 
+ 111   2          while(ADCF == 0); 
+ 112   2        }
+ 113   1      }
+ 114          
+C51 COMPILER V9.53.0.0   FUNCTIONS                                                         10/22/2019 02:10:31 PAGE 3   
+
+ 115          bit cycles (UINT16 cycles)
+ 116          {
+ 117   1        static UINT16 i = 0;
+ 118   1        if ( i < cycles)
+ 119   1          i++;
+ 120   1        else
+ 121   1        {
+ 122   2          i=0;
+ 123   2          return 1;
+ 124   2        }
+ 125   1        return 0;
+ 126   1      }
+ 127            
+ 128            
+ 129          UINT16 get_VDD (void)
+ 130          {
+ 131   1        return get_battery_voltage();
+ 132   1      }
+ 133          
+ 134          void set_PWM (UINT16 VDD, bit low_PWM)
+ 135          {
+ 136   1        UINT16 temp = 0;
+ 137   1        
+ 138   1        if (VDD < 3550 || low_PWM)
+ 139   1        {
+ 140   2          temp = VDD - 1900;                    //resistor voltage = VDD - LED voltage
+ 141   2          temp = temp/33;                       //resistor current = resistor voltage / resistor value
+ 142   2          temp = (LOW_BAT_TARGET_CURRENT * 100)/ temp;  //Duty, % = (target_current*100%)/resistor current
+ 143   2          PWM_DUTY_REGISTER_L = (PWMPL * temp) / 100;         //% = (D1.0 / 100)* Duty
+ 144   2          PWM1H = 0;
+ 145   2          set_LOAD;
+ 146   2          return;
+ 147   2        }
+ 148   1        
+ 149   1        temp = VDD - 2050;                    //resistor voltage = VDD - LED voltage
+ 150   1        temp = temp/33;                       //resistor current = resistor voltage / resistor value
+ 151   1        temp = (TARGET_CURRENT * 100)/ temp;  //Duty, % = (target_current*100%)/resistor current
+ 152   1        PWM_DUTY_REGISTER_L = (PWMPL * temp) / 100;         //% = (D1.0 / 100)* Duty
+ 153   1        PWM1H = 0;
+ 154   1        set_LOAD;
+ 155   1      }
+ 156          
+ 157          
+ 158          /////////////////////////////////
+ 159          //Light sensor
+ 160          /////////////////////////////////
+ 161          /*
+ 162          void get_light_resisistance (void)
+ 163          {
+ 164            Enable_ADC_BandGap; 
+ 165            ADC_Bypass(); 
+ 166            clr_ADCF; 
+ 167            set_ADCS; 
+ 168            while(ADCF == 0);
+ 169            bgvalue = (ADCRH<<4) + ADCRL;
+ 170            680/ = adc/
+ 171            x     4095-adc
+ 172          }
+ 173          */
+ 174          /////////////////////////////////
+ 175          //init charge lvl
+ 176          /////////////////////////////////
+C51 COMPILER V9.53.0.0   FUNCTIONS                                                         10/22/2019 02:10:31 PAGE 4   
+
+ 177          void init_charge (UINT16 VDD)
+ 178          {
+ 179   1        if (VDD > 3500)           //20%
+ 180   1        {
+ 181   2          charge_blink();
+ 182   2        }
+ 183   1        if (VDD > 3640)           //40%
+ 184   1        {
+ 185   2          charge_blink();
+ 186   2        }
+ 187   1        if (VDD > 3770)           //60%
+ 188   1        {
+ 189   2          charge_blink();
+ 190   2        }
+ 191   1        if (VDD > 3910)           //80%
+ 192   1        {
+ 193   2          charge_blink();
+ 194   2        }
+ 195   1        if (VDD > 4050)           //100%
+ 196   1        {
+ 197   2          charge_blink();
+ 198   2        }
+ 199   1      }
+ 200                
+ 201          void charge_blink (void)
+ 202          {
+ 203   1        UINT8 k;
+ 204   1        PWM_OUTPUT_ENABLE;
+ 205   1        for (k = 0; k < 150; k++);
+ 206   1        PWM_OUTPUT_DISABLE;
+ 207   1        for (k = 0; k < 150; k++);
+ 208   1      }
+ 209          
+ 210          
+ 211          /////////////////////////////////
+ 212          //clock
+ 213          /////////////////////////////////
+ 214          void set_LIRC(void)
+ 215          {
+ 216   1        CKDIV = 0x00;
+ 217   1        set_OSC1;                         
+ 218   1        clr_OSC0;  
+ 219   1        while((CKEN&SET_BIT0)==1);
+ 220   1        clr_HIRCEN;
+ 221   1      }
+ 222          
+ 223          void set_HIRC(void)
+ 224          {
+ 225   1        set_HIRCEN;
+ 226   1        while((CKEN&SET_BIT0)==1);
+ 227   1        clr_OSC1;                         
+ 228   1        clr_OSC0; 
+ 229   1        CKDIV = 0;
+ 230   1      }
+ 231          /////////////////////////////////
+ 232          //blink
+ 233          /////////////////////////////////
+ 234          bit timer_blink_check (void) //time ms
+ 235          {
+ 236   1        
+ 237   1        if (!TF1)
+ 238   1          return 0;
+C51 COMPILER V9.53.0.0   FUNCTIONS                                                         10/22/2019 02:10:31 PAGE 5   
+
+ 239   1        
+ 240   1        if (TF1)
+ 241   1        {
+ 242   2          clr_TR1;
+ 243   2          clr_TF1;
+ 244   2          return 1;
+ 245   2        }
+ 246   1        return 0;
+ 247   1      }
+ 248          
+ 249          void timer_blink_start (UINT16 time) //6553 ms max @ 10kHz
+ 250          {
+ 251   1        UINT16 tics;
+ 252   1      
+ 253   1        if (TR1)
+ 254   1          return;
+ 255   1        tics = (CLOCK/1000)*time;
+ 256   1        tics = ~tics;
+ 257   1        TL1 = tics & 0xFF;
+ 258   1        TH1 = tics >> 8;
+ 259   1        set_TR1;
+ 260   1      }
+ 261          
+ 262          void timer_blink_reset (void)
+ 263          {
+ 264   1        clr_TR1;
+ 265   1        clr_TF1;
+ 266   1        TL1 = 0;
+ 267   1        TH1 = 0;
+ 268   1      }
+ 269          
+ 270          void low_bat_blink (void)
+ 271          {
+ 272   1        static UINT8 stage = 0;
+ 273   1        
+ 274   1        switch (stage)
+ 275   1        {
+ 276   2          case 0:
+ 277   2          {
+ 278   3            PWM_OUTPUT_ENABLE;
+ 279   3            timer_blink_start(LOW_BAT_SHORT);
+ 280   3            if (timer_blink_check())
+ 281   3              stage++;
+ 282   3            break;
+ 283   3          }
+ 284   2          case 1:
+ 285   2          {
+ 286   3            PWM_OUTPUT_DISABLE;
+ 287   3            timer_blink_start(LOW_BAT_SHORT);
+ 288   3            if (timer_blink_check())
+ 289   3              stage++;
+ 290   3            break;
+ 291   3          }
+ 292   2          case 2:
+ 293   2          {
+ 294   3            PWM_OUTPUT_ENABLE;
+ 295   3            timer_blink_start(LOW_BAT_SHORT);
+ 296   3            if (timer_blink_check())
+ 297   3              stage++;
+ 298   3            break;
+ 299   3          }
+ 300   2              case 3:
+C51 COMPILER V9.53.0.0   FUNCTIONS                                                         10/22/2019 02:10:31 PAGE 6   
+
+ 301   2          {
+ 302   3            PWM_OUTPUT_DISABLE;
+ 303   3            timer_blink_start(LOW_BAT_SHORT);
+ 304   3            if (timer_blink_check())
+ 305   3              stage++;
+ 306   3            break;
+ 307   3          }
+ 308   2              case 4:
+ 309   2          {
+ 310   3            PWM_OUTPUT_ENABLE;
+ 311   3            timer_blink_start(LOW_BAT_SHORT);
+ 312   3            if (timer_blink_check())
+ 313   3              stage++;
+ 314   3            break;
+ 315   3          }
+ 316   2              case 5:
+ 317   2          {
+ 318   3            PWM_OUTPUT_DISABLE;
+ 319   3            timer_blink_start(LOW_BAT_LONG);
+ 320   3            if (timer_blink_check())
+ 321   3              stage++;
+ 322   3            break;
+ 323   3          }
+ 324   2        }
+ 325   1          
+ 326   1          if (stage > 5)
+ 327   1            stage = 0;
+ 328   1      
+ 329   1      }
+ 330          
+ 331          void blink_fast (void)
+ 332          {
+ 333   1        static UINT8 stage = 0;
+ 334   1        
+ 335   1        switch (stage)
+ 336   1        {
+ 337   2          case 0:
+ 338   2          {
+ 339   3            PWM_OUTPUT_ENABLE;
+ 340   3            timer_blink_start(BLINK_FAST);
+ 341   3            if (timer_blink_check())
+ 342   3              stage=1;
+ 343   3            break;
+ 344   3          }
+ 345   2          case 1:
+ 346   2          {
+ 347   3            PWM_OUTPUT_DISABLE;
+ 348   3            timer_blink_start(BLINK_FAST);
+ 349   3            if (timer_blink_check())
+ 350   3              stage=0;
+ 351   3            break;
+ 352   3          }
+ 353   2        
+ 354   2        }
+ 355   1      }
+ 356          
+ 357          void blink_slow (void)
+ 358          {
+ 359   1        static UINT8 stage = 0;
+ 360   1        
+ 361   1        switch (stage)
+ 362   1        {
+C51 COMPILER V9.53.0.0   FUNCTIONS                                                         10/22/2019 02:10:31 PAGE 7   
+
+ 363   2          case 0:
+ 364   2          {
+ 365   3            PWM_OUTPUT_ENABLE;
+ 366   3            timer_blink_start(BLINK_SLOW);
+ 367   3            if (timer_blink_check())
+ 368   3              stage = 1;
+ 369   3            break;
+ 370   3          }
+ 371   2          case 1:
+ 372   2          {
+ 373   3            PWM_OUTPUT_DISABLE;
+ 374   3            timer_blink_start(BLINK_SLOW);
+ 375   3            if (timer_blink_check())
+ 376   3              stage = 0;
+ 377   3            break;
+ 378   3          }
+ 379   2        }
+ 380   1      }
+ 381          /////////////////////////////////
+ 382          //Power Down
+ 383          /////////////////////////////////
+ 384          void power_down (void)
+ 385          {
+ 386   1        PWM_OUTPUT_DISABLE;
+ 387   1        LED_DISABLE;
+ 388   1        set_HIRC();
+ 389   1        set_button_int();
+ 390   1        set_EA;
+ 391   1        set_EPI;
+ 392   1        set_PD;
+ 393   1      }
+ 394          
+ 395          void set_button_int(void) //P1.5
+ 396          {
+ 397   1        set_PIT45;
+ 398   1        set_PIPS0;
+ 399   1        clr_PIPS1;
+ 400   1        set_PINEN5; //falling edge triger
+ 401   1      }
+ 402          
+ 403          void clr_button_int(void)
+ 404          {
+ 405   1        clr_PIF5;
+ 406   1        clr_PIT45;
+ 407   1        clr_PIPS0;
+ 408   1        clr_PIPS1;
+ 409   1        clr_PINEN5;
+ 410   1      }
+ 411          
+ 412          void button_int (void) interrupt 7
+ 413          {
+ 414   1        clr_button_int();
+ 415   1        set_SWRST;
+ 416   1        P11_Input_Mode;
+ 417   1      }
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =   1390    ----
+   CONSTANT SIZE    =   ----    ----
+   XDATA SIZE       =   ----    ----
+   PDATA SIZE       =   ----    ----
+C51 COMPILER V9.53.0.0   FUNCTIONS                                                         10/22/2019 02:10:31 PAGE 8   
+
+   DATA SIZE        =     36    ----
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =      1    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

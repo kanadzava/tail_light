@@ -1,0 +1,8 @@
+".\Output\main.obj",
+".\Output\Init.obj",
+".\Output\Button_debounce.obj",
+".\Output\functions.obj",
+".\Output\STARTUP.obj" 
+TO ".\Output\I2C_M" 
+PRINT(".\Output\LST\I2C_M.m51") RAMSIZE(256) 
+DISABLEWARNING (16) 

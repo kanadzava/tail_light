@@ -1,0 +1,1 @@
+"Code\src\Button_debounce.c" OPTIMIZE (0,SPEED) BROWSE INCDIR(Common;Include;.\Code\header) DEFINE (FOSC_10000) DEBUG OBJECTEXTEND PRINT(.\Output\LST\Button_debounce.lst) TABS (2) OBJECT(.\Output\Button_debounce.obj)

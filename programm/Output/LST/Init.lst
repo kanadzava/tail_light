@@ -1,0 +1,125 @@
+C51 COMPILER V9.53.0.0   INIT                                                              10/22/2019 01:58:31 PAGE 1   
+
+
+C51 COMPILER V9.53.0.0, COMPILATION OF MODULE INIT
+OBJECT MODULE PLACED IN .\Output\Init.obj
+COMPILER INVOKED BY: C:\Keil_v5_C51\C51\BIN\C51.EXE Code\src\Init.c OPTIMIZE(0,SPEED) BROWSE INCDIR(Common;Include;.\Cod
+                    -e\header) DEFINE(FOSC_10000) DEBUG OBJECTEXTEND PRINT(.\Output\LST\Init.lst) TABS(2) OBJECT(.\Output\Init.obj)
+
+line level    source
+
+   1          #include "N76E003.h"
+   2          #include "Common.h"
+   3          #include "SFR_Macro.h"
+   4          #include "Function_define.h"
+   5          ///////////////////////////////
+   6          
+   7          #include "Init.h"
+   8          #define PWM_DUTY_REGISTER_L PWM1L
+   9          #define PWM_OUTPUT_ENABLE set_PIO01
+  10          #define PWM_OUTPUT_DISABLE clr_PIO01
+  11          
+  12          #define LED_DISABLE     clr_P11
+  13          #define LED_ENABLE      set_P11
+  14          #define POWER_ENABLE    set_P10
+  15          #define POWER_DISABLE   clr_P10
+  16          #define INT1            P00
+  17          #define INT2            P01
+  18          #define LIGHT_INPUT     P12
+  19          
+  20          
+  21          void init (void)
+  22          {
+  23   1        LED_DISABLE;
+  24   1        Set_All_GPIO_Quasi_Mode;
+  25   1        P15_Input_Mode; //button
+  26   1        P10_PushPull_Mode; //power gate
+  27   1        P11_PushPull_Mode; //led gate
+  28   1      
+  29   1        
+  30   1        P12_Input_Mode; //light input
+  31   1        
+  32   1        //I2C
+  33   1        P13_OpenDrain_Mode; //SCL
+  34   1        P14_OpenDrain_Mode; //SDA
+  35   1        P00_Input_Mode; //INT1
+  36   1        P01_Input_Mode; //INT2  
+  37   1        
+  38   1      
+  39   1      
+  40   1        /////////////////////////////////
+  41   1        //Brown Out Detector
+  42   1        /////////////////////////////////
+  43   1        set_LPBOD1;
+  44   1        set_LPBOD0;   //check period 25.6ms
+  45   1        
+  46   1        
+  47   1        
+  48   1        ////////////////////////////////
+  49   1        //timer0 init   button timer
+  50   1        /////////////////////////////////
+  51   1        set_M0_T0;    // mode1 - 16bit
+  52   1        set_T0M;      //sys clock
+  53   1        
+  54   1        
+C51 COMPILER V9.53.0.0   INIT                                                              10/22/2019 01:58:31 PAGE 2   
+
+  55   1        ////////////////////////////////
+  56   1        //timer1 init   blink tmer
+  57   1        /////////////////////////////////
+  58   1        set_M0_T1;    // mode1 - 16bit
+  59   1        set_T1M;      //sys clock
+  60   1        
+  61   1        ////////////////////////////////
+  62   1        //PWM init
+  63   1        /////////////////////////////////
+  64   1        //PWM_OUTPUT_DISABLE; //enable PWM out
+  65   1        set_CLRPWM;
+  66   1        while (CLRPWM);
+  67   1        PWMPL = 100;
+  68   1        PWMPH = 0;
+  69   1        PWM_DUTY_REGISTER_L = 100-40;
+  70   1        set_PWMRUN;
+  71   1      
+  72   1          
+  73   1      }
+  74          
+  75          
+  76          
+  77          
+  78          
+  79          
+  80          
+  81          
+  82          
+  83          
+  84          
+  85          
+  86          
+  87          
+  88          
+  89          
+  90          
+  91          
+  92          
+  93          
+  94          
+  95          
+  96          
+  97          
+  98          
+  99          
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =    135    ----
+   CONSTANT SIZE    =   ----    ----
+   XDATA SIZE       =   ----    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =   ----    ----
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

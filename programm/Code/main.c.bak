@@ -1,0 +1,30 @@
+#include "main.h"
+
+void main(void)
+{   
+UINT16 i;
+sysInit();
+
+	while (1)
+	{
+		UINT16 temp;
+		//UINT8 timerDisplay;
+		//UINT8 timerTemp;
+
+		Enable_ADC_AIN2;
+		set_ADCS;
+		while (ADCS == 1);
+		numderToHex(temp);
+		TM1637WriteNum();
+		
+		fanPWM(ADCRH);
+		mode (temp);
+		temp = getTemp();
+		
+		//for (i = 0; i <= 65000; i++)
+		
+		
+		EA=0;TA=0xAA;TA=0x55;WDCON|=SET_BIT6;EA=1; //watch dog reset
+	}
+	
+}

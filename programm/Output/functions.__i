@@ -1,0 +1,1 @@
+"Code\src\functions.c" OPTIMIZE (0,SPEED) BROWSE INCDIR(Common;Include;.\Code\header) DEFINE (FOSC_10000) DEBUG OBJECTEXTEND PRINT(.\Output\LST\functions.lst) TABS (2) OBJECT(.\Output\functions.obj)
